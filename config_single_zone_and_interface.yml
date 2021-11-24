@@ -1,0 +1,92 @@
+######################################################
+# Include Firewalls
+###################################################### 
+
+- hosts: Firewalls
+  collections:
+    - fortinet.fortios
+  connection: httpapi
+
+######################################################
+# General Variables
+######################################################  
+  
+  vars:
+# Connection 
+   ansible_httpapi_use_ssl: no
+   ansible_httpapi_validate_certs: no
+   ansible_httpapi_port: 80 #REPLACE WITH 443 CONNECTION IF POSSIBLE!
+
+#System Interfaces and Zones
+   # VDOM Name
+   vdom: "root"
+   # VPN Name
+   remote_service: "MGMT_VLAN"   
+   # IPv4 Address for FW with /Subnetmask
+   ipv4_fw: "192.168.0.71/24"
+   # IPv6 Address for FW with /Subnetmask
+   ipv6_fw: "fd8f:bda5:99b5:b911::/64"
+   # Vlan ID in Integer, e.g. 134   
+   vlanid: "666"
+   # Interface Name
+   if_name: "{{ vdom }}_{{ vlanid }}"
+   # Allowed Protocols for the Interface
+   allows: [ping, https, http, ssh]
+
+
+######################################################
+# System Interface Dictionary
+######################################################
+        
+   interface:          
+        name: "{{ if_name }}"
+        vdom: "{{ vdom }}"   
+        mode: "static"        
+        type: "vlan"    
+        ip: "{{ ipv4_fw }}" 
+        allowaccess: "{{ allows }}"
+        description: "Interface for {{ remote_service }}"  
+        ipv6:
+          ip6_address: "{{ ipv6_fw }}"                    
+        interface: "port10"  
+        vlanid: "{{ vlanid }}"       
+
+######################################################
+# System Zone Dictionary
+######################################################  
+
+   zone:
+        name: "{{ remote_service }}"
+        interface:
+          - interface_name: "{{ if_name }}"
+        intrazone: deny
+
+
+######################################################
+# Automatic Tasks
+######################################################  
+
+  tasks:
+
+
+#Debug
+  - name: DEBUG [PLEASE READ]
+    debug:
+      msg:
+        - "Message 1: Please ensure that the required VDOM is already created"
+        - "Message 2: Hosts file must exist"  
+ 
+#Interfaces    
+  - name: Configure Interfaces
+    fortios_system_interface:
+     vdom: "{{ vdom }}"
+     state: "present"
+     system_interface: "{{ interface }}"
+
+
+#System Zone   
+  - name: Create Zone 
+    fortios_system_zone:
+     vdom: "{{ vdom }}"
+     state: "present"
+     system_zone: "{{ zone }}"
